@@ -1,0 +1,61 @@
+# docker-compose.yml
+# Cluster Vault haute disponibilité : 3 nœuds (Raft) + répartiteur HAProxy
+# Usage laboratoire / démonstration uniquement.
+
+version: "3.8"
+
+services:
+  vault-1:
+    image: hashicorp/vault:latest
+    container_name: vault-1
+    cap_add: ["IPC_LOCK"]
+    volumes:
+      - ./config/vault.hcl:/vault/config/vault.hcl:ro
+      - vault1-data:/vault/data
+    ports:
+      - "8201:8200"
+    command: server -config=/vault/config/vault.hcl
+    networks: [vault-net]
+
+  vault-2:
+    image: hashicorp/vault:latest
+    container_name: vault-2
+    cap_add: ["IPC_LOCK"]
+    volumes:
+      - ./config/vault.hcl:/vault/config/vault.hcl:ro
+      - vault2-data:/vault/data
+    ports:
+      - "8202:8200"
+    command: server -config=/vault/config/vault.hcl
+    networks: [vault-net]
+
+  vault-3:
+    image: hashicorp/vault:latest
+    container_name: vault-3
+    cap_add: ["IPC_LOCK"]
+    volumes:
+      - ./config/vault.hcl:/vault/config/vault.hcl:ro
+      - vault3-data:/vault/data
+    ports:
+      - "8203:8200"
+    command: server -config=/vault/config/vault.hcl
+    networks: [vault-net]
+
+  haproxy:
+    image: haproxy:latest
+    container_name: vault-lb
+    depends_on: [vault-1, vault-2, vault-3]
+    volumes:
+      - ./config/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "8200:8200"   # point d'entrée unique du cluster
+    networks: [vault-net]
+
+networks:
+  vault-net:
+    driver: bridge
+
+volumes:
+  vault1-data:
+  vault2-data:
+  vault3-data:
